@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dungeon Crawler</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background:#0d0d0d;
+    color:#eee;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+  }
+  .game {
+    background:#1c1c1c;
+    padding:20px;
+    border-radius:12px;
+    max-width:500px;
+    text-align:center;
+    box-shadow:0 6px 20px rgba(0,0,0,0.7);
+  }
+  .hp { margin:6px 0; }
+  button {
+    margin:6px;
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+  }
+  button:hover { opacity:0.8; }
+  .attack { background:#e63946; color:white; }
+  .heal { background:#457b9d; color:white; }
+  .next { background:#2a9d8f; color:white; }
+  .info { font-size:14px; opacity:0.85; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="game">
+  <h1>🏰 Dungeon Crawler</h1>
+  <div id="status"></div>
+  <div id="actions"></div>
+</div>
+
+<script>
+const monsters = [
+  {name:"Dragon 🐉", maxHp:40, attack:8, exp:15},
+  {name:"Ogre 👹", maxHp:30, attack:6, exp:10},
+  {name:"Wolf 🐺", maxHp:20, attack:4, exp:6},
+  {name:"Goblin 👾", maxHp:15, attack:3, exp:4},
+  {name:"Skeleton ☠️", maxHp:18, attack:5, exp:5}
+];
+
+let knight, monster, room;
+
+function newGame() {
+  knight = {name:"Knight 🗡️", maxHp:50, hp:50, attack:7, exp:0, level:1, potions:1, gold:0};
+  room = 1;
+  log("A brave Knight enters the dungeon... 🗡️");
+  nextRoom();
+}
+
+function nextRoom(){
+  room++;
+  if(Math.random()<0.6){ // monster encounter
+    const m = monsters[Math.floor(Math.random()*monsters.length)];
+    monster = { ...m, hp:m.maxHp };
+    log(`Room ${room}: A ${monster.name} appears!`);
+    update();
+  } else { // treasure
+    monster=null;
+    let lootRoll=Math.random();
+    if(lootRoll<0.4){
+      knight.potions++;
+      log(`Room ${room}: Found a potion! 🧪`);
+    } else if(lootRoll<0.7){
+      knight.gold += rand(5,15);
+      log(`Room ${room}: Found some gold! 💰`);
+    } else {
+      knight.attack++;
+      log(`Room ${room}: Found a sharper sword! ⚔️ Attack +1`);
+    }
+    actionButtons([["Continue","nextRoom","next"]]);
+    update();
+  }
+}
+
+function attack() {
+  monster.hp -= rand(knight.attack-2, knight.attack+2);
+  log(`${knight.name} strikes ${monster.name}!`);
+  if(monster.hp<=0){ 
+    log(`${monster.name} is defeated!`);
+    gainExp(monster.exp);
+    actionButtons([["Next Room","nextRoom","next"]]);
+    update();
+    return;
+  }
+  // monster retaliates
+  knight.hp -= rand(monster.attack-2, monster.attack+2);
+  log(`${monster.name} hits back!`);
+  if(knight.hp<=0){
+    knight.hp=0;
+    log(`💀 The Knight has fallen...`);
+    actionButtons([["Restart","newGame","next"]]);
+  }
+  update();
+}
+
+function heal() {
+  if(knight.potions<=0){
+    log("No potions left!");
+    return;
+  }
+  knight.potions--;
+  const amount = rand(10,18);
+  knight.hp = Math.min(knight.maxHp, knight.hp+amount);
+  log(`${knight.name} drinks a potion and heals ${amount} HP.`);
+  // monster gets a free attack if alive
+  if(monster){
+    knight.hp -= rand(monster.attack-2, monster.attack+2);
+    log(`${monster.name} attacks while you heal!`);
+  }
+  if(knight.hp<=0){
+    knight.hp=0;
+    log(`💀 The Knight has fallen...`);
+    actionButtons([["Restart","newGame","next"]]);
+  }
+  update();
+}
+
+function gainExp(amount){
+  knight.exp+=amount;
+  log(`⭐ Gained ${amount} EXP`);
+  if(knight.exp>=knight.level*20){
+    knight.level++;
+    knight.exp=0;
+    knight.maxHp+=10;
+    knight.attack+=2;
+    knight.hp=knight.maxHp;
+    log(`🎉 Level up! Now Level ${knight.level}. HP+10, Attack+2.`);
+  }
+}
+
+function update() {
+  let status = `
+    <div class="hp">${knight.name} HP: ${knight.hp}/${knight.maxHp}</div>
+    <div class="info">⚔️ Atk: ${knight.attack} | ⭐ Lvl: ${knight.level} | 🧪 Potions: ${knight.potions} | 💰 Gold: ${knight.gold}</div>
+  `;
+  if(monster){
+    status += `<div class="hp">${monster.name} HP: ${monster.hp}/${monster.maxHp}</div>`;
+  }
+  document.getElementById("status").innerHTML = status;
+
+  if(knight.hp>0 && monster && monster.hp>0){
+    actionButtons([
+      ["Attack","attack","attack"],
+      ["Potion","heal","heal"]
+    ]);
+  }
+}
+
+function actionButtons(list){
+  const div = document.getElementById("actions");
+  div.innerHTML="";
+  list.forEach(([text,fn,cls])=>{
+    const b=document.createElement("button");
+    b.textContent=text;
+    b.className=cls;
+    b.onclick=()=>window[fn]();
+    div.appendChild(b);
+  });
+}
+
+function log(msg){
+  const s=document.getElementById("status");
+  s.innerHTML += `<div class="info">${msg}</div>`;
+}
+
+function rand(min,max){ return Math.max(1, Math.floor(Math.random()*(max-min+1))+min); }
+
+newGame();
+</script>
+</body>
+</html>
