@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Spinning Square</title>
+  <style>
+    :root { --size: 120px; --duration: 2s; }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0f172a;        /* dark backdrop */
+      font-family: system-ui, Arial, sans-serif;
+      color: #e2e8f0;
+    }
+
+    .square {
+      width: var(--size);
+      height: var(--size);
+      background: #22d3ee;       /* cyan */
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: spin var(--duration) linear infinite;
+    }
+
+    .square:hover {
+      animation-play-state: paused; /* pause on hover */
+      cursor: pointer;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(1turn); }
+    }
+
+    /* Accessibility: respect reduced-motion preferences */
+    @media (prefers-reduced-motion: reduce) {
+      .square { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="square" title="Hover to pause"></div>
+</body>
+</html>
