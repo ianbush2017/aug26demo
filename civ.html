@@ -1,39 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini Civ: Greeks vs Egyptians</title>
-<style>
-  body { background: #111; color: white; font-family: sans-serif; text-align: center; }
-  #game { display: inline-block; margin-top: 20px; }
-  .row { display: flex; }
-  .tile {
-    width: 60px; height: 60px;
-    border: 1px solid #555;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px;
-    cursor: pointer;
-    position: relative;
-  }
-  .selected { outline: 3px solid yellow; }
-  .hp { position: absolute; top: 0; left: 0; font-size: 16px; color: white; }
-</style>
-</head>
-<body>
-<h1>Mini Civ: Greeks vs Egyptians</h1>
-<p id="info">Turn: Greeks | Click to select/move unit</p>
-<div id="game"></div>
-
+<h1>Mini Civ: Greeks, Egyptians, Chinese & Persians</h1>
 <script>
 const ROWS = 8, COLS = 10;
-let turn = "GREEKS"; // GREEKS or EGYPTS
+const factions = ["GREEKS", "EGYPTS", "CHINESE", "PERSIANS"];
+let turnIndex = 0;
+let turn = factions[turnIndex];
 let selectedUnit = null;
 
-// Initialize map tiles
+// Initialize map
 const gameDiv = document.getElementById("game");
 const tiles = [];
-
 for(let r=0;r<ROWS;r++){
   const rowDiv = document.createElement("div");
   rowDiv.className = "row";
@@ -48,74 +23,137 @@ for(let r=0;r<ROWS;r++){
   tiles.push(rowTiles);
 }
 
-// Units
+// Units in corners
 const units = [
   {x:0,y:0,faction:"GREEKS",hp:3},
   {x:1,y:0,faction:"GREEKS",hp:3},
+  {x:9,y:7,faction:"EGYPTS",hp:3},
   {x:8,y:7,faction:"EGYPTS",hp:3},
-  {x:9,y:7,faction:"EGYPTS",hp:3}
+  {x:0,y:7,faction:"CHINESE",hp:3},
+  {x:1,y:7,faction:"CHINESE",hp:3},
+  {x:9,y:0,faction:"PERSIANS",hp:3},
+  {x:8,y:0,faction:"PERSIANS",hp:3}
 ];
+
+// Cities in corners
+const cities = [
+  {x:0,y:1,faction:"GREEKS"},
+  {x:9,y:6,faction:"EGYPTS"},
+  {x:0,y:6,faction:"CHINESE"},
+  {x:9,y:1,faction:"PERSIANS"}
+];
+
+// Resources with variety
+const resourceTypes = ["🍇","🌾","🍖","💎"];
+const resources = [];
+for(let i=0;i<12;i++){
+  const x = Math.floor(Math.random()*COLS);
+  const y = Math.floor(Math.random()*ROWS);
+  const type = resourceTypes[Math.floor(Math.random()*resourceTypes.length)];
+  resources.push({x,y,type});
+}
 
 function render(){
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
-      tiles[r][c].textContent = "";
-      tiles[r][c].classList.remove("selected");
-      tiles[r][c].querySelectorAll(".hp").forEach(el=>el.remove());
+      const tile = tiles[r][c];
+      tile.textContent = "";
+      tile.classList.remove("selected");
+      tile.querySelectorAll(".hp").forEach(el=>el.remove());
+      tile.querySelectorAll(".city").forEach(el=>el.remove());
+      tile.style.background = "#111";
     }
   }
+
+  // Draw resources
+  resources.forEach(res=>{
+    tiles[res.y][res.x].textContent = res.type;
+  });
+
+  // Draw cities
+  cities.forEach(city=>{
+    const tile = tiles[city.y][city.x];
+    const cityEmoji = {
+      "GREEKS":"🏛️",
+      "EGYPTS":"⛩️",
+      "CHINESE":"🀄",
+      "PERSIANS":"🏰"
+    }[city.faction];
+    const cityDiv = document.createElement("div");
+    cityDiv.className = "city";
+    cityDiv.textContent = cityEmoji;
+    tile.appendChild(cityDiv);
+  });
+
+  // Draw units
   units.forEach(u=>{
-    const tile = tiles[u.y][u.x];
-    const emoji = u.faction=="GREEKS" ? "⚔️" : "🐪";
-    tile.textContent = emoji;
-    if(u.selected) tile.classList.add("selected");
+    const emoji = {
+      "GREEKS":"⚔️",
+      "EGYPTS":"🐪",
+      "CHINESE":"🎎",
+      "PERSIANS":"🏹"
+    }[u.faction];
+    const text = document.createElement("span");
+    text.textContent = emoji;
+    tiles[u.y][u.x].appendChild(text);
+    if(u.selected) tiles[u.y][u.x].classList.add("selected");
+
     // HP
     const hpDiv = document.createElement("div");
     hpDiv.className = "hp";
     hpDiv.textContent = "❤️".repeat(u.hp);
-    tile.appendChild(hpDiv);
+    tiles[u.y][u.x].appendChild(hpDiv);
   });
+
   document.getElementById("info").textContent = `Turn: ${turn} | Click to select/move unit`;
 }
 
-function getUnitAt(x,y){
-  return units.find(u=>u.x===x && u.y===y);
-}
+function getUnitAt(x,y){ return units.find(u=>u.x===x && u.y===y); }
+function getCityAt(x,y){ return cities.find(c=>c.x===x && c.y===y); }
+function getResourceAt(x,y){ return resources.find(r=>r.x===x && r.y===y); }
 
-// Tile click
 tiles.forEach((row,r)=>{
   row.forEach((tile,c)=>{
     tile.addEventListener("click",()=>{
       const clickedUnit = getUnitAt(c,r);
-      // Select own unit
+      const clickedCity = getCityAt(c,r);
+      const clickedResource = getResourceAt(c,r);
+
       if(clickedUnit && clickedUnit.faction===turn){
         if(selectedUnit) selectedUnit.selected=false;
         selectedUnit = clickedUnit;
         selectedUnit.selected=true;
-      }
-      // Move or attack
-      else if(selectedUnit){
+      } else if(selectedUnit){
         if(clickedUnit && clickedUnit.faction!==turn){
-          clickedUnit.hp -= 1;
-          if(clickedUnit.hp<=0){
-            units.splice(units.indexOf(clickedUnit),1);
+          clickedUnit.hp-=1;
+          if(clickedUnit.hp<=0) units.splice(units.indexOf(clickedUnit),1);
+          selectedUnit.selected=false;
+          selectedUnit=null;
+          turnIndex = (turnIndex+1)%factions.length;
+          turn = factions[turnIndex];
+        } else if(!clickedUnit){
+          selectedUnit.x=c;
+          selectedUnit.y=r;
+          if(clickedCity && clickedCity.faction!==turn){
+            clickedCity.faction=turn;
+          }
+          if(clickedResource){
+            selectedUnit.hp = Math.min(selectedUnit.hp+1,5);
+            resources.splice(resources.indexOf(clickedResource),1);
           }
           selectedUnit.selected=false;
           selectedUnit=null;
-          turn = turn==="GREEKS"?"EGYPTS":"GREEKS";
-        } else if(!clickedUnit){
-          selectedUnit.x = c;
-          selectedUnit.y = r;
-          selectedUnit.selected=false;
-          selectedUnit=null;
-          turn = turn==="GREEKS"?"EGYPTS":"GREEKS";
+          turnIndex = (turnIndex+1)%factions.length;
+          turn = factions[turnIndex];
         }
       }
+
       // Victory check
-      const greeks = units.filter(u=>u.faction==="GREEKS");
-      const egypts = units.filter(u=>u.faction==="EGYPTS");
-      if(!greeks){ alert("EGYPTS WIN!"); location.reload(); }
-      if(!egypts){ alert("GREEKS WIN!"); location.reload(); }
+      const aliveFactions = factions.filter(f=>units.some(u=>u.faction===f));
+      if(aliveFactions.length===1){ 
+        alert(`${aliveFactions[0]} WIN!`); 
+        location.reload(); 
+      }
 
       render();
     });
@@ -124,5 +162,3 @@ tiles.forEach((row,r)=>{
 
 render();
 </script>
-</body>
-</html>
