@@ -1,0 +1,128 @@
+import pygame, sys
+
+# --- Settings ---
+WIDTH, HEIGHT = 640, 480
+ROWS, COLS = 8, 10
+TILE_SIZE = WIDTH // COLS
+FPS = 60
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREY  = (200, 200, 200)
+YELLOW= (240, 240, 50)
+
+# --- Pygame Init ---
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Mini Civ: Greeks vs Egyptians")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 48)  # bigger font for emojis
+
+# --- Game State ---
+turn = "GREEKS"  # "EGYPTS" or "GREEKS"
+
+# Simple unit class
+class Unit:
+    def __init__(self, x, y, faction):
+        self.x = x
+        self.y = y
+        self.faction = faction
+        self.hp = 3
+        self.selected = False
+
+# Units
+units = [
+    Unit(0, 0, "GREEKS"),
+    Unit(1, 0, "GREEKS"),
+    Unit(8, 7, "EGYPTS"),
+    Unit(9, 7, "EGYPTS")
+]
+
+selected_unit = None
+
+# --- Functions ---
+def draw_grid():
+    for r in range(ROWS):
+        for c in range(COLS):
+            rect = pygame.Rect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            pygame.draw.rect(screen, GREY, rect, 1)
+
+def draw_units():
+    for unit in units:
+        emoji = "⚔️" if unit.faction=="GREEKS" else "🐪"
+        text = font.render(emoji, True, WHITE)
+        rect = text.get_rect(center=(unit.x*TILE_SIZE+TILE_SIZE//2,
+                                     unit.y*TILE_SIZE+TILE_SIZE//2))
+        screen.blit(text, rect)
+        # Highlight if selected
+        if unit.selected:
+            pygame.draw.rect(screen, YELLOW, (unit.x*TILE_SIZE, unit.y*TILE_SIZE, TILE_SIZE, TILE_SIZE), 3)
+        # Draw HP above unit
+        hp_text = font.render("❤️"*unit.hp, True, WHITE)
+        screen.blit(hp_text, (unit.x*TILE_SIZE, unit.y*TILE_SIZE - 20))
+
+def get_unit_at(pos):
+    for unit in units:
+        if unit.x == pos[0] and unit.y == pos[1]:
+            return unit
+    return None
+
+# --- Main Loop ---
+running = True
+while running:
+    screen.fill(BLACK)
+    draw_grid()
+    draw_units()
+    
+    # Info
+    info = pygame.font.SysFont(None, 24).render(f"Turn: {turn} | Click to select/move unit", True, WHITE)
+    screen.blit(info, (10, HEIGHT-30))
+    
+    pygame.display.flip()
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = pygame.mouse.get_pos()
+            grid_pos = (mx // TILE_SIZE, my // TILE_SIZE)
+            clicked_unit = get_unit_at(grid_pos)
+            
+            # Select own unit
+            if clicked_unit and clicked_unit.faction == turn:
+                if selected_unit:
+                    selected_unit.selected = False
+                selected_unit = clicked_unit
+                selected_unit.selected = True
+            # Move or attack
+            elif selected_unit:
+                # Check attack
+                if clicked_unit and clicked_unit.faction != turn:
+                    clicked_unit.hp -= 1
+                    if clicked_unit.hp <= 0:
+                        units.remove(clicked_unit)
+                    selected_unit.selected = False
+                    selected_unit = None
+                    turn = "EGYPTS" if turn=="GREEKS" else "GREEKS"
+                # Move to empty tile
+                elif not clicked_unit:
+                    selected_unit.x, selected_unit.y = grid_pos
+                    selected_unit.selected = False
+                    selected_unit = None
+                    turn = "EGYPTS" if turn=="GREEKS" else "GREEKS"
+    
+    # Victory check
+    greeks = [u for u in units if u.faction=="GREEKS"]
+    egypts = [u for u in units if u.faction=="EGYPTS"]
+    if not greeks:
+        print("EGYPTS WIN!")
+        running = False
+    elif not egypts:
+        print("GREEKS WIN!")
+        running = False
+    
+    clock.tick(FPS)
+
+pygame.quit()
+sys.exit()
