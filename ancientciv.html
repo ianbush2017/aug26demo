@@ -1,129 +1,128 @@
-import pygame, sys
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Civ: Greeks vs Egyptians</title>
+<style>
+  body { background: #111; color: white; font-family: sans-serif; text-align: center; }
+  #game { display: inline-block; margin-top: 20px; }
+  .row { display: flex; }
+  .tile {
+    width: 60px; height: 60px;
+    border: 1px solid #555;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    cursor: pointer;
+    position: relative;
+  }
+  .selected { outline: 3px solid yellow; }
+  .hp { position: absolute; top: 0; left: 0; font-size: 16px; color: white; }
+</style>
+</head>
+<body>
+<h1>Mini Civ: Greeks vs Egyptians</h1>
+<p id="info">Turn: Greeks | Click to select/move unit</p>
+<div id="game"></div>
 
-# --- Settings ---
-WIDTH, HEIGHT = 640, 480
-ROWS, COLS = 8, 10
-TILE_SIZE = WIDTH // COLS
-FPS = 60
+<script>
+const ROWS = 8, COLS = 10;
+let turn = "GREEKS"; // GREEKS or EGYPTS
+let selectedUnit = null;
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GREY  = (200, 200, 200)
-GREEN = (50, 200, 50)
-RED   = (200, 50, 50)
-BLUE  = (50, 50, 200)
-YELLOW= (240, 240, 50)
+// Initialize map tiles
+const gameDiv = document.getElementById("game");
+const tiles = [];
 
-# --- Pygame Init ---
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Mini Civ: Greeks vs Egyptians")
-clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 24)
+for(let r=0;r<ROWS;r++){
+  const rowDiv = document.createElement("div");
+  rowDiv.className = "row";
+  const rowTiles = [];
+  for(let c=0;c<COLS;c++){
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    rowDiv.appendChild(tile);
+    rowTiles.push(tile);
+  }
+  gameDiv.appendChild(rowDiv);
+  tiles.push(rowTiles);
+}
 
-# --- Game State ---
-turn = "GREEKS"  # "EGYPTS" or "GREEKS"
+// Units
+const units = [
+  {x:0,y:0,faction:"GREEKS",hp:3},
+  {x:1,y:0,faction:"GREEKS",hp:3},
+  {x:8,y:7,faction:"EGYPTS",hp:3},
+  {x:9,y:7,faction:"EGYPTS",hp:3}
+];
 
-# Simple unit class
-class Unit:
-    def __init__(self, x, y, faction):
-        self.x = x
-        self.y = y
-        self.faction = faction
-        self.hp = 3
-        self.selected = False
+function render(){
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      tiles[r][c].textContent = "";
+      tiles[r][c].classList.remove("selected");
+      tiles[r][c].querySelectorAll(".hp").forEach(el=>el.remove());
+    }
+  }
+  units.forEach(u=>{
+    const tile = tiles[u.y][u.x];
+    const emoji = u.faction=="GREEKS" ? "⚔️" : "🐪";
+    tile.textContent = emoji;
+    if(u.selected) tile.classList.add("selected");
+    // HP
+    const hpDiv = document.createElement("div");
+    hpDiv.className = "hp";
+    hpDiv.textContent = "❤️".repeat(u.hp);
+    tile.appendChild(hpDiv);
+  });
+  document.getElementById("info").textContent = `Turn: ${turn} | Click to select/move unit`;
+}
 
-# Units
-units = [
-    Unit(0, 0, "GREEKS"),
-    Unit(1, 0, "GREEKS"),
-    Unit(8, 7, "EGYPTS"),
-    Unit(9, 7, "EGYPTS")
-]
+function getUnitAt(x,y){
+  return units.find(u=>u.x===x && u.y===y);
+}
 
-selected_unit = None
+// Tile click
+tiles.forEach((row,r)=>{
+  row.forEach((tile,c)=>{
+    tile.addEventListener("click",()=>{
+      const clickedUnit = getUnitAt(c,r);
+      // Select own unit
+      if(clickedUnit && clickedUnit.faction===turn){
+        if(selectedUnit) selectedUnit.selected=false;
+        selectedUnit = clickedUnit;
+        selectedUnit.selected=true;
+      }
+      // Move or attack
+      else if(selectedUnit){
+        if(clickedUnit && clickedUnit.faction!==turn){
+          clickedUnit.hp -= 1;
+          if(clickedUnit.hp<=0){
+            units.splice(units.indexOf(clickedUnit),1);
+          }
+          selectedUnit.selected=false;
+          selectedUnit=null;
+          turn = turn==="GREEKS"?"EGYPTS":"GREEKS";
+        } else if(!clickedUnit){
+          selectedUnit.x = c;
+          selectedUnit.y = r;
+          selectedUnit.selected=false;
+          selectedUnit=null;
+          turn = turn==="GREEKS"?"EGYPTS":"GREEKS";
+        }
+      }
+      // Victory check
+      const greeks = units.filter(u=>u.faction==="GREEKS");
+      const egypts = units.filter(u=>u.faction==="EGYPTS");
+      if(!greeks){ alert("EGYPTS WIN!"); location.reload(); }
+      if(!egypts){ alert("GREEKS WIN!"); location.reload(); }
 
-# --- Functions ---
-def draw_grid():
-    for r in range(ROWS):
-        for c in range(COLS):
-            rect = pygame.Rect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE)
-            pygame.draw.rect(screen, GREY, rect, 1)
+      render();
+    });
+  });
+});
 
-def draw_units():
-    for unit in units:
-        color = BLUE if unit.faction=="GREEKS" else RED
-        rect = pygame.Rect(unit.x*TILE_SIZE+10, unit.y*TILE_SIZE+10, TILE_SIZE-20, TILE_SIZE-20)
-        pygame.draw.rect(screen, color, rect)
-        # Highlight if selected
-        if unit.selected:
-            pygame.draw.rect(screen, YELLOW, rect, 3)
-        # Draw HP
-        hp_text = font.render(str(unit.hp), True, WHITE)
-        screen.blit(hp_text, (unit.x*TILE_SIZE+5, unit.y*TILE_SIZE+5))
-
-def get_unit_at(pos):
-    for unit in units:
-        if unit.x == pos[0] and unit.y == pos[1]:
-            return unit
-    return None
-
-# --- Main Loop ---
-running = True
-while running:
-    screen.fill(BLACK)
-    draw_grid()
-    draw_units()
-    
-    # Info
-    info = font.render(f"Turn: {turn} | Click to select/move unit", True, WHITE)
-    screen.blit(info, (10, HEIGHT-30))
-    
-    pygame.display.flip()
-    
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            mx, my = pygame.mouse.get_pos()
-            grid_pos = (mx // TILE_SIZE, my // TILE_SIZE)
-            clicked_unit = get_unit_at(grid_pos)
-            
-            # Select own unit
-            if clicked_unit and clicked_unit.faction == turn:
-                if selected_unit:
-                    selected_unit.selected = False
-                selected_unit = clicked_unit
-                selected_unit.selected = True
-            # Move or attack
-            elif selected_unit:
-                # Check attack
-                if clicked_unit and clicked_unit.faction != turn:
-                    clicked_unit.hp -= 1
-                    if clicked_unit.hp <= 0:
-                        units.remove(clicked_unit)
-                    selected_unit.selected = False
-                    selected_unit = None
-                    turn = "EGYPTS" if turn=="GREEKS" else "GREEKS"
-                # Move to empty tile
-                elif not clicked_unit:
-                    selected_unit.x, selected_unit.y = grid_pos
-                    selected_unit.selected = False
-                    selected_unit = None
-                    turn = "EGYPTS" if turn=="GREEKS" else "GREEKS"
-    
-    # Victory check
-    greeks = [u for u in units if u.faction=="GREEKS"]
-    egypts = [u for u in units if u.faction=="EGYPTS"]
-    if not greeks:
-        print("EGYPTS WIN!")
-        running = False
-    elif not egypts:
-        print("GREEKS WIN!")
-        running = False
-    
-    clock.tick(FPS)
-
-pygame.quit()
-sys.exit()
+render();
+</script>
+</body>
+</html>
