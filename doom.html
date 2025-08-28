@@ -1,121 +1,70 @@
 import pygame, math, random
 
+# --- Setup ---
 pygame.init()
 WIDTH, HEIGHT = 640, 480
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
 # Colors
-BLACK = (0,0,0)
-RED   = (200,0,0)
-GREEN = (0,200,0)
-WHITE = (255,255,255)
+WHITE = (255, 255, 255)
+RED   = (200, 0, 0)
+BLACK = (0, 0, 0)
+GREEN = (0, 200, 0)
 
-# --- Maps ---
-# Legend: 1=wall, 0=floor, 2=stairs
-floor0 = [
-    [1,1,1,1,1,1,1,1],
-    [1,0,0,0,0,2,0,1],
-    [1,0,1,1,0,0,0,1],
-    [1,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1]
-]
+# Player
+player_health = 100
+max_health = 100
+flash_alpha = 0  # red flash transparency
 
-floor1 = [
-    [1,1,1,1,1,1,1,1],
-    [1,2,0,0,0,0,0,1],
-    [1,0,1,0,1,0,0,1],
-    [1,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1]
-]
+# Enemy (demo: press SPACE to simulate being hit)
+enemy_damage = 20
 
-maps = [floor0, floor1]
-current_floor = 0
-
-TILE = 64
-player_x, player_y = 100, 100
-player_health, max_health = 100, 100
-flash_alpha = 0
-
-# --- Enemy setup ---
-enemies = [
-    {"type":"spider","x":200,"y":200,"health":30,"floor":0},
-    {"type":"spider","x":300,"y":100,"health":30,"floor":1}
-]
-
-# --- Health Bar ---
+# --- Draw Health Bar ---
 def draw_health_bar(surface, x, y, w, h, health, max_health):
     ratio = health / max_health
-    pygame.draw.rect(surface, RED,   (x, y, w, h))
-    pygame.draw.rect(surface, GREEN, (x, y, w * ratio, h))
-    pygame.draw.rect(surface, WHITE, (x, y, w, h), 2)
+    pygame.draw.rect(surface, RED,   (x, y, w, h))                # background (lost HP)
+    pygame.draw.rect(surface, GREEN, (x, y, w * ratio, h))        # current HP
+    pygame.draw.rect(surface, WHITE, (x, y, w, h), 2)             # border
 
 # --- Main Loop ---
-running=True
+running = True
 while running:
-    for e in pygame.event.get():
-        if e.type==pygame.QUIT: running=False
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_SPACE]:  # simulate damage
+        if player_health > 0:
+            player_health -= enemy_damage
+            player_health = max(0, player_health)
+            flash_alpha = 150   # trigger red flash
 
-    keys=pygame.key.get_pressed()
-    speed=2
-    if keys[pygame.K_LEFT]:  player_x -= speed
-    if keys[pygame.K_RIGHT]: player_x += speed
-    if keys[pygame.K_UP]:    player_y -= speed
-    if keys[pygame.K_DOWN]:  player_y += speed
+    # --- Update flash ---
+    if flash_alpha > 0:
+        flash_alpha -= 5  # fade speed
+    
+    # --- Drawing ---
+    screen.fill((50, 50, 50))  # background
+    
+    # Draw player health bar (bottom center)
+    bar_width, bar_height = 200, 20
+    draw_health_bar(screen, WIDTH//2 - bar_width//2, HEIGHT - 40,
+                    bar_width, bar_height, player_health, max_health)
 
-    # Check stairs (tile=2)
-    tile_x, tile_y = int(player_x//TILE), int(player_y//TILE)
-    if maps[current_floor][tile_y][tile_x] == 2 and keys[pygame.K_f]:
-        current_floor = (current_floor+1) % len(maps)  # switch floor
-        print("Now on floor", current_floor)
+    # Draw red flash overlay
+    if flash_alpha > 0:
+        flash_surface = pygame.Surface((WIDTH, HEIGHT))
+        flash_surface.set_alpha(flash_alpha)
+        flash_surface.fill(RED)
+        screen.blit(flash_surface, (0, 0))
 
-    # Enemy behavior (simple: move toward player if on same floor)
-    for en in enemies:
-        if en["floor"]==current_floor and en["health"]>0:
-            dx,dy = player_x-en["x"], player_y-en["y"]
-            dist=math.hypot(dx,dy)
-            if dist<200 and dist>0:
-                en["x"] += dx/dist*1.5
-                en["y"] += dy/dist*1.5
-            # Collision damage
-            if dist<20:
-                player_health = max(0, player_health-1)
-                flash_alpha=120
-
-    # Flash update
-    if flash_alpha>0: flash_alpha-=5
-
-    # --- Draw ---
-    screen.fill((50,50,50))
-
-    # Map topdown view (debug style mini map)
-    for y,row in enumerate(maps[current_floor]):
-        for x,val in enumerate(row):
-            color = (100,100,100) if val==1 else (30,30,30)
-            if val==2: color=(0,0,200)  # stairs
-            pygame.draw.rect(screen,color,(x*TILE//4,y*TILE//4,TILE//4,TILE//4))
-
-    # Draw player (blue square)
-    pygame.draw.rect(screen,(0,0,255),(player_x//4,player_y//4,8,8))
-
-    # Draw enemies (spiders = 🕷️ red circles)
-    for en in enemies:
-        if en["floor"]==current_floor and en["health"]>0:
-            pygame.draw.circle(screen,(200,0,0),(int(en["x"]//4),int(en["y"]//4)),5)
-
-    # HUD: Health bar
-    draw_health_bar(screen, WIDTH//2-100, HEIGHT-30, 200, 20, player_health, max_health)
-
-    # Red flash
-    if flash_alpha>0:
-        overlay=pygame.Surface((WIDTH,HEIGHT))
-        overlay.set_alpha(flash_alpha)
-        overlay.fill(RED)
-        screen.blit(overlay,(0,0))
-
-    font=pygame.font.SysFont(None,24)
-    screen.blit(font.render("Arrow keys move | F = stairs",True,WHITE),(10,10))
-
+    # Info text
+    font = pygame.font.SysFont(None, 24)
+    txt = font.render("Press SPACE to simulate damage", True, WHITE)
+    screen.blit(txt, (20, 20))
+    
     pygame.display.flip()
     clock.tick(60)
 
