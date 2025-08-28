@@ -10,6 +10,9 @@ FPS = 60
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREY  = (200, 200, 200)
+GREEN = (50, 200, 50)
+RED   = (200, 50, 50)
+BLUE  = (50, 50, 200)
 YELLOW= (240, 240, 50)
 
 # --- Pygame Init ---
@@ -17,7 +20,7 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Mini Civ: Greeks vs Egyptians")
 clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 48)  # bigger font for emojis
+font = pygame.font.SysFont(None, 24)
 
 # --- Game State ---
 turn = "GREEKS"  # "EGYPTS" or "GREEKS"
@@ -50,17 +53,15 @@ def draw_grid():
 
 def draw_units():
     for unit in units:
-        emoji = "⚔️" if unit.faction=="GREEKS" else "🐪"
-        text = font.render(emoji, True, WHITE)
-        rect = text.get_rect(center=(unit.x*TILE_SIZE+TILE_SIZE//2,
-                                     unit.y*TILE_SIZE+TILE_SIZE//2))
-        screen.blit(text, rect)
+        color = BLUE if unit.faction=="GREEKS" else RED
+        rect = pygame.Rect(unit.x*TILE_SIZE+10, unit.y*TILE_SIZE+10, TILE_SIZE-20, TILE_SIZE-20)
+        pygame.draw.rect(screen, color, rect)
         # Highlight if selected
         if unit.selected:
-            pygame.draw.rect(screen, YELLOW, (unit.x*TILE_SIZE, unit.y*TILE_SIZE, TILE_SIZE, TILE_SIZE), 3)
-        # Draw HP above unit
-        hp_text = font.render("❤️"*unit.hp, True, WHITE)
-        screen.blit(hp_text, (unit.x*TILE_SIZE, unit.y*TILE_SIZE - 20))
+            pygame.draw.rect(screen, YELLOW, rect, 3)
+        # Draw HP
+        hp_text = font.render(str(unit.hp), True, WHITE)
+        screen.blit(hp_text, (unit.x*TILE_SIZE+5, unit.y*TILE_SIZE+5))
 
 def get_unit_at(pos):
     for unit in units:
@@ -76,7 +77,7 @@ while running:
     draw_units()
     
     # Info
-    info = pygame.font.SysFont(None, 24).render(f"Turn: {turn} | Click to select/move unit", True, WHITE)
+    info = font.render(f"Turn: {turn} | Click to select/move unit", True, WHITE)
     screen.blit(info, (10, HEIGHT-30))
     
     pygame.display.flip()
