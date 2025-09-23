@@ -1,5 +1,7 @@
 # My report for how AlexNet works goes here:
 
+# I want a full startup pitch for this idea. Give me ten company names I can use.
+
 # Use lot of pictures and links if needed.
 # Explain in a way that assumes that the reader doesn't know about the subject.
 
